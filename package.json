@@ -1,0 +1,70 @@
+{
+  "name": "cue-daily",
+  "productName": "Cue Daily",
+  "version": "0.1.0",
+  "description": "Cue overlay for everyday help and Stockfish chess analysis",
+  "main": "desktop/main.cjs",
+  "private": true,
+  "license": "MIT",
+  "author": "Cue contributors",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start.cjs",
+    "web": "node server.cjs",
+    "test": "node --test test/*.test.cjs",
+    "build:mac": "electron-builder --mac --arm64",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "test:browser": "node test/browser-check.cjs && node test/chess-browser-check.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "playwright": "1.61.1",
+    "axe-core": "4.11.1"
+  },
+  "build": {
+    "appId": "dev.cue.daily",
+    "productName": "Cue Daily",
+    "files": [
+      "desktop/**",
+      "core/**",
+      "ui/**",
+      "assets/**",
+      "licenses/**",
+      "LICENSE",
+      "THIRD_PARTY.md",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Record a question for transcription when you press Record.",
+        "NSScreenCaptureUsageDescription": "Attach a screen or window that you select to a question."
+      }
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office",
+      "icon": "assets/icon.png"
+    }
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  }
+}

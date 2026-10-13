@@ -1,0 +1,20 @@
+/* Chess shares Cue's existing toolbar and answer popup. */
+.control-bar #scan .cue-scan-label{font-size:inherit}
+.chess-setup{margin:18px 0 10px;padding:17px 0 0;border:0;border-top:1px solid #e2d8c9;min-width:0}
+.chess-setup legend{padding:0 8px 0 0;font:18px Georgia,serif;color:#493624}
+.chess-setup>p:first-of-type{margin-top:0}
+.chess-setup .settings-row>div{min-width:0}
+.chess-setup #saveChessSetup{margin-top:5px}
+.chess-setup #chessSettingsStatus{overflow-wrap:anywhere}
+.chess-answer-tools{display:flex;align-items:center;gap:12px;padding:9px 22px;border-top:1px solid #e2d8c9}
+.chess-answer-tools button{font-size:11px}
+.chess-message p{max-width:420px;margin-left:auto;margin-right:auto}
+body[data-cue-mode=chess] .question-details,
+body[data-cue-mode=chess] .answer-tools,
+body[data-cue-mode=chess] #followupForm,
+body[data-cue-mode=chess] #markReviewed,
+body[data-cue-mode=chess] #record{display:none!important}
+.chess-setup[hidden],.chess-answer-tools[hidden]{display:none!important}
+body[data-cue-mode=chess] #answerMeta{overflow-wrap:anywhere;max-width:100%}
+@media(max-width:560px){body[data-cue-mode=chess] .control-bar #scan .cue-scan-label{display:none}body[data-cue-mode=chess] .control-bar #scan::after{content:attr(data-chess-short)}.chess-answer-tools{padding:9px 18px}}
+@media(max-width:360px){.control-bar{gap:3px}.cue-wordmark{font-size:23px;padding-right:0}.bar-modes .nav-button{font-size:9px;padding:7px 4px}.control-bar #scan{padding:7px 6px;gap:4px}.control-bar #scan svg{width:14px}.control-bar #toggleCue{padding-left:6px;padding-right:5px;font-size:9px}.control-bar #overlaySettings,.control-bar #quitCue{min-width:18px}}

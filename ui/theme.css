@@ -1,0 +1,74 @@
+/* Quiet, tactile colors and editorial type; original Cue design. */
+:root {
+  --bg:#f5f1ea; --surface:#fffdfa; --sidebar:#eae3d7;
+  --text:#392e26; --muted:#766959; --line:#dfd6c9;
+  --accent:#684b34; --accent-hover:#4e3524; --soft:#ece2d4;
+  --radius:10px;
+}
+.sidebar { border-right-color:#ded4c5; }
+.brand { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-size:38px; letter-spacing:-2px; }
+.brand-mark { font-family:Georgia,"Times New Roman",serif; border-radius:50%; background:#76583d; font-weight:400; font-size:25px; }
+.version { font-family:Arial,sans-serif; border-color:#cbbba7; color:#796d5d; letter-spacing:1px; }
+.topbar { background:#f9f5ee; border-color:#e7dfd3; }
+.main-content { padding-top:42px; }
+.page-heading { margin-bottom:34px; }
+.page-heading h1 { font-family:Georgia,"Times New Roman",serif; font-size:46px; font-weight:400; letter-spacing:-1.7px; margin:14px 0 12px; }
+.page-heading .eyebrow { color:#8a7259; letter-spacing:2.1px; font-size:9px; }
+.page-heading p { color:#817263; font-size:12px; }
+.scan-button { background:#6a4c34; border-radius:6px; padding:13px 18px; box-shadow:0 2px 0 #42271412; }
+.scan-button kbd { border-color:#947456; color:#eadbcb; }
+.connection { background:#eee6d8; border-color:#e0d1bd; color:#6f533c; }
+.status-dot { background:#8b7954; }.status-dot.off { background:#ae895b; }
+.nav-button.active { background:#ded1bd; color:#513a28; }
+.nav-button:hover { background:#e2d8c9; }
+.side-context { border-color:#d8cbb9; }.side-context input,.side-context textarea { background:#f4eee4; border-color:#d9cbb7; }
+.side-label { color:#8d7861; }
+.profile { border-color:#d8cbb9; }.avatar { background:#ddcfba; border-color:#d0bfa7; color:#684b34; }
+.work-grid { gap:18px; grid-template-columns:170px minmax(290px,1fr) minmax(310px,1.05fr); }
+.panel { border-color:#e1d7ca; box-shadow:0 3px 12px #573c2010; }
+.queue-panel { border:0; background:transparent; box-shadow:none; padding-left:0; }
+.queue-panel .panel-heading { padding-left:10px; }
+.queue-item { border-radius:6px; padding:15px 12px; }
+.queue-item:hover { background:#eee5d8; }
+.queue-item.active { background:#e9ddcb; border-color:#ddcdb5; box-shadow:none; }
+.queue-item .q-title { font-weight:450; font-size:12px; }
+.queue-item .q-top { color:#856d52; letter-spacing:.4px; }
+.queue-item .q-type { color:#8a735b; }
+.sample-button { border-color:#ddd0bc; color:#8b755b; }
+.question-panel { padding:18px 22px; }
+.question-panel h2 { font-family:Georgia,"Times New Roman",serif; font-size:24px; font-weight:400; letter-spacing:-.7px; line-height:1.25; }
+.question-panel select { background:#f4ede2; border-color:#e5d8c5; color:#7c6045; }
+.question-input { background:var(--surface); }
+.question-panel #draft { background:#f9f5ed; border-color:#e4d7c6; }
+.secondary { background:#fffdfa; border-color:#ded0bc; color:#785b40; }
+.secondary:hover { background:#f2e8d8; }
+.answer-panel>.panel-heading { background:#fbf7ef; border-color:#e8dfd2; padding-top:22px; padding-bottom:21px; }
+.answer-panel>.panel-heading h2 { font-family:Georgia,"Times New Roman",serif; font-size:19px; font-weight:400; }
+.spark { color:#9c7d57; font-size:19px; margin-right:8px; }
+.pill { color:#937b60; border-color:#e3d7c4; background:#fffaf2; }
+.answer-content { padding:24px; max-height:495px; color:#544737; }
+.answer-content h3 { font-family:Georgia,"Times New Roman",serif; font-size:20px; font-weight:400; letter-spacing:-.35px; line-height:1.4; color:#493625; margin:22px 0 12px; }
+.answer-content p,.answer-content li { font-size:12px; line-height:1.85; }
+.answer-content code { background:#f0e8da; }.answer-content pre { background:#f6efe3; border-color:#e2d3bd; }
+.empty-symbol { background:#f1e7d8; border-color:#e9dac3; color:#ac8d61; border-radius:50%; }
+.empty-answer h3 { font-size:23px; }.empty-answer p { font-size:12px; }.empty-steps { color:#9a8062; }
+.answer-tools { gap:12px; border-color:#e8ded0; }
+.answer-tools button { font-size:10px; white-space:nowrap; }
+.answer-bottom { background:#f7f1e7; border-color:#e5d9c7; }
+.followup-form { padding:14px 20px 18px; border-top:1px solid #e8ded0; background:#fcf8f1; }
+.followup-form label { margin:0 0 9px; font-size:10px; font-weight:400; color:#8c7356; }
+.followup-form>div { display:flex; align-items:center; gap:6px; background:#fffdfa; border:1px solid #dfcfba; border-radius:6px; padding-right:6px; }
+.followup-form input { border:0; background:transparent; padding:12px; font-size:11px; }
+.followup-form button { flex-shrink:0; color:#795533; }
+.followup-turn { border-top:1px solid var(--line); padding-top:12px; margin-top:24px; }
+.followup-turn>h3:first-child { font-family:inherit; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#937353; }
+.settings-section-title { font-family:Georgia,"Times New Roman",serif; font-size:22px; font-weight:400; border-top:1px solid var(--line); padding-top:24px; margin-top:26px; }
+dialog { background:#fffaf2; border-color:#d6c5ac; border-radius:10px; }dialog h2 { font-family:Georgia,"Times New Roman",serif; font-size:30px; font-weight:400; }
+.workspace-footer { color:#9a8770; }.session-strip { border-color:#dfd3c0; }
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible { outline-color:#a88560; }
+@media(min-width:1600px) { .page-heading h1 { font-size:54px; } }
+@media(max-width:1190px) { .work-grid { grid-template-columns:1fr 1fr; }.queue-panel { border-bottom:1px solid var(--line); padding:0 0 12px; }.page-heading h1 { font-size:40px; } }
+@media(max-width:800px) { .brand { font-size:30px; }.page-heading h1 { font-size:40px; }.question-panel { padding:18px; }.answer-content { padding:20px; }.sidebar { border-bottom-color:#d7c8b3; }.main-content { padding-top:30px; } }
+@media(max-width:580px) { .work-grid { grid-template-columns:1fr; }.page-heading h1 { font-size:43px; }.answer-content { max-height:none; }.answer-tools { gap:10px; flex-wrap:wrap; }.answer-tools button { font-size:10px; }.page-heading { gap:20px; }.followup-form { padding:14px 18px 18px; }.brand { font-size:28px; }.question-panel h2 { font-size:25px; } }
+.workspace-footer{color:#78634b;font-size:10px}.empty-steps{color:#796248}.queue-item .q-top,.queue-item .q-type{color:#796047}.followup-form label{color:#796047}.pill{color:#796047}.page-heading p{color:#746454}
+:root{--muted:#6b5d4b}.version,.side-label{color:#6f5c46}.page-heading .eyebrow{color:#7e6549}.queue-item .q-top,.queue-item .q-type{color:#73583e}.sample-button{color:#796045}
