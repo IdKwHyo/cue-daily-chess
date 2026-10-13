@@ -72,8 +72,13 @@ app.whenReady().then(async () => {
     capture: async () => { const frame = await watchCapture(); const image = nativeImage.createFromDataURL(frame.dataUrl); return { ...frame, size: image.getSize() }; },
     crop: (dataUrl, bounds) => {
       const image = nativeImage.createFromDataURL(dataUrl), { width, height } = image.getSize();
-      const x = Math.floor(bounds[0] * width / 1000), y = Math.floor(bounds[1] * height / 1000);
-      return image.crop({ x, y, width: Math.min(width - x, Math.max(1, Math.round(bounds[2] * width / 1000))), height: Math.min(height - y, Math.max(1, Math.round(bounds[3] * height / 1000))) }).toDataURL();
+      // Keep a small coordinate border; approximate model bounds must not cut
+      // off the edge pieces. All coordinates are still relative to the display.
+      const padX = bounds[2] * .025, padY = bounds[3] * .025;
+      const x = Math.max(0, Math.floor((bounds[0] - padX) * width / 1000)), y = Math.max(0, Math.floor((bounds[1] - padY) * height / 1000));
+      const right = Math.min(width, Math.ceil((bounds[0] + bounds[2] + padX) * width / 1000));
+      const bottom = Math.min(height, Math.ceil((bounds[1] + bounds[3] + padY) * height / 1000));
+      return image.crop({ x, y, width: Math.max(1, right - x), height: Math.max(1, bottom - y) }).toDataURL();
     },
     recognize: (image, options) => service.recognizeBoard(image, options),
     engineFactory: () => require('../core/stockfish.cjs').createStockfish(),

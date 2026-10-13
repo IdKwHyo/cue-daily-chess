@@ -7,6 +7,7 @@ const move = (selector, target) => { const node = document.querySelector(selecto
 move('.mode-nav', '.bar-modes'); move('#scan', '.bar-actions'); move('#record', '.bar-actions');
 move('#notice', '.popup-notices'); move('#error', '.popup-notices'); move('.answer-panel', '.popup-answer');
 move('.queue-panel', '.popup-questions'); move('.question-panel', '.popup-questions');
+$('followupForm').prepend($('attachments'));
 // Ancillary session actions and tailoring are available in the settings sheet.
 const session = document.createElement('details'); session.className = 'session-settings'; session.innerHTML = '<summary>Context & saved sessions</summary>';
 session.append(document.querySelector('.side-context'));
@@ -26,11 +27,13 @@ function resize() {
   window.desktop?.resizeOverlay?.(height).catch(console.error);
 }
 function reveal(value = true) {
+  const wasExpanded = expanded;
   expanded = value; $('cuePopup').hidden = !value;
-  if (value) $('cuePopup').scrollTop = 0;
+  if (value && !wasExpanded) $('cuePopup').scrollTop = 0;
   $('toggleCue').setAttribute('aria-expanded', String(value)); $('toggleCue').textContent = value ? 'Cue ↑' : 'Cue ↓'; resize();
 }
 window.addEventListener('cue-reveal', () => reveal());
+window.addEventListener('cue-resize', resize);
 $('toggleCue').onclick = () => reveal(!expanded);
 $('dismissCue').onclick = () => { reveal(false); $('toggleCue').focus(); };
 $('overlaySettings').onclick = () => $('settingsOpen').click();

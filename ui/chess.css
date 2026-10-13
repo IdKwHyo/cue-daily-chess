@@ -18,3 +18,13 @@ body[data-cue-mode=chess] #record{display:none!important}
 body[data-cue-mode=chess] #answerMeta{overflow-wrap:anywhere;max-width:100%}
 @media(max-width:560px){body[data-cue-mode=chess] .control-bar #scan .cue-scan-label{display:none}body[data-cue-mode=chess] .control-bar #scan::after{content:attr(data-chess-short)}.chess-answer-tools{padding:9px 18px}}
 @media(max-width:360px){.control-bar{gap:3px}.cue-wordmark{font-size:23px;padding-right:0}.bar-modes .nav-button{font-size:9px;padding:7px 4px}.control-bar #scan{padding:7px 6px;gap:4px}.control-bar #scan svg{width:14px}.control-bar #toggleCue{padding-left:6px;padding-right:5px;font-size:9px}.control-bar #overlaySettings,.control-bar #quitCue{min-width:18px}}
+.chess-answer-tools{flex-wrap:wrap;gap:8px 16px}
+.chess-answer-tools .small:empty{display:none}
+.chess-history-turn{padding:10px 0 14px;border-bottom:1px solid #e2d8c9}
+.chess-history-turn:last-child{border-bottom:0}
+.chess-history-turn p{margin:4px 0}
+.chess-history-turn .chess-turn-label{font:10px Arial,sans-serif;letter-spacing:.05em;color:#755b43}
+.chess-history-turn.current .chess-turn-label{font-weight:700}
+#chessFenText{width:100%;font:13px/1.5 monospace;resize:vertical}
+#chessFenFile{max-width:100%;font-size:12px}
+#fenImportError{position:static;margin:12px 0}

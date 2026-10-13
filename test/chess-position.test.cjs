@@ -24,6 +24,13 @@ test('recovers two missed plies without guessing the turn or dropping history', 
   assert.equal(tracker.observe('rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR').changed, false);
 });
 
+test('recovers a unique four-ply continuation after a slow board read', () => {
+  const tracker = createTracker();
+  const result = tracker.observe('rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR');
+  assert.deepEqual(result.position.moves, ['e2e4', 'd7d5', 'e4d5', 'd8d5']);
+  assert.equal(result.fen, 'rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3');
+});
+
 test('rejects malformed observations and missed move sequences without changing the confirmed state', () => {
   const tracker = createTracker();
   for (const placement of [null, '8/8/8', '8/8/8/8/8/8/8/8',

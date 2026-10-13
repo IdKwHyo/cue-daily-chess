@@ -83,24 +83,38 @@ function createTracker(initialFen = START_FEN) {
       if (placement === placementOf(fullFen(chess))) return result(false);
       const search = new Chess(fullFen(chess));
       const matches = new Map();
+      const target = new Chess(`${placement} w - - 0 1`);
+      const wanted = target.board().flat().filter(Boolean);
       let inspected = 0;
-      function inspect(path) {
-        if (++inspected > MAX_TRANSITIONS) throw new Error('The board has too many possible transitions. Import a full FEN to reset the position.');
-        const candidateFen = fullFen(search);
-        if (placementOf(candidateFen) === placement) matches.set(candidateFen, path);
+      const deadline = performance.now() + 1500;
+      function canReach(remaining) {
+        // Each own move can fill one missing target square (two for castling).
+        // This is a lower bound, not a heuristic that invents or changes pieces.
+        for (const color of ['w', 'b']) {
+          const available = Math.floor(remaining / 2) + (search.turn() === color ? remaining % 2 : 0);
+          const missing = wanted.filter(piece => piece.color === color && (search.get(piece.square)?.type !== piece.type || search.get(piece.square)?.color !== color));
+          const rank = color === 'w' ? '1' : '8';
+          const castle = [['g', 'f'], ['c', 'd']].some(([king, rook]) => missing.some(p => p.square === king + rank && p.type === 'k') && missing.some(p => p.square === rook + rank && p.type === 'r'));
+          if (missing.length - Number(castle) > available) return false;
+        }
+        return true;
       }
-      for (const first of search.moves({ verbose: true })) {
-        search.move(moveInput(first));
-        inspect([uciOf(first)]);
-        for (const second of search.moves({ verbose: true })) {
-          search.move(moveInput(second));
-          inspect([uciOf(first), uciOf(second)]);
+      function inspect(path, remaining) {
+        if (++inspected > MAX_TRANSITIONS || performance.now() > deadline) throw new Error('Could not safely catch up with the board. Choose Load FEN to resume from this position.');
+        const candidateFen = fullFen(search);
+        if (!remaining) { if (placementOf(candidateFen) === placement) matches.set(candidateFen, path); return; }
+        if (!canReach(remaining)) return;
+        for (const move of search.moves({ verbose: true })) {
+          search.move(moveInput(move));
+          inspect([...path, uciOf(move)], remaining - 1);
           search.undo();
         }
-        search.undo();
       }
-      if (!matches.size) throw new Error('Could not match the board within two legal moves. If moves were missed or the game started mid-position, import a full FEN to reset.');
-      if (matches.size > 1) throw new Error('The board matches more than one legal position. Import a full FEN to confirm whose turn and special move rights.');
+      // Prefer the shortest legal explanation. Longer gaps must have one full
+      // resulting state; differing turn, rights or counters are never guessed.
+      for (let depth = 1; depth <= 4 && !matches.size; depth++) inspect([], depth);
+      if (!matches.size) throw new Error('Could not match this board within four legal moves. Retrying the screen; use Load FEN if the game is further ahead.');
+      if (matches.size > 1) throw new Error('The board matches more than one legal position. Choose Load FEN to confirm the game state.');
       for (const uci of matches.values().next().value) {
         chess.move(uci);
         moves.push(uci);

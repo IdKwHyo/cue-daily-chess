@@ -20,6 +20,18 @@ async function waitFor(predicate, timeout = 3000) {
 }
 const nextTurn = () => new Promise(resolve => setImmediate(resolve));
 
+test('an uncertain read retries the same visible frame automatically within the next watch interval', async t => {
+  let reads = 0;
+  const live = createLiveChess({ initial: { interval: 1000 }, capture: async () => frame(image),
+    recognize: async () => ++reads === 1 ? { visible: false, reason: 'The board is still animating.' } : visible(startPlacement),
+    engine: { analyze: async () => ({ bestmove: 'e2e4' }), close() {} }
+  });
+  t.after(() => live.stop());
+  live.start();
+  await waitFor(() => live.status().status === 'ready', 2500);
+  assert.equal(reads, 2);
+});
+
 test('live screen capture flows through recognition and legal tracking to text; unchanged screen skips AI and engine work', async t => {
   let currentImage = image, captures = 0, reads = 0;
   const searches = [], updates = [];
@@ -175,4 +187,64 @@ test('invalid watch settings are rejected before capture, engine, or persistence
     recognize: async () => visible(startPlacement), engine: { close() {}, analyze: async () => ({ bestmove: 'e2e4' }) }
   }), /watch interval/);
   assert.equal(captured, false);
+});
+
+test('an initial full-frame recognition caches the board crop without a redundant model read', async t => {
+  let captures = 0, reads = 0;
+  const live = createLiveChess({ initial: { interval: 1000 }, capture: async () => { captures++; return frame(image); },
+    crop: url => url + '-crop',
+    recognize: async () => { reads++; return { ...visible(startPlacement), bounds: [100, 100, 600, 600] }; },
+    engine: { analyze: async () => ({ bestmove: 'e2e4' }), close() {} }
+  });
+  t.after(() => live.stop()); live.start();
+  await waitFor(() => captures >= 3);
+  assert.equal(reads, 1);
+  assert.equal(live.status().answer, 'White · Pawn e2 → e4');
+});
+
+test('repeated crop failures relocate automatically and recover without resetting the legal position', async t => {
+  let currentImage = image;
+  const optionsSeen = [], searches = [];
+  const live = createLiveChess({ initial: { interval: 1000 }, capture: async () => frame(currentImage), crop: url => url + '-crop',
+    recognize: async (_url, options) => {
+      optionsSeen.push({ cropped: options.cropped, orientation: options.orientation });
+      if (optionsSeen.length === 2 || optionsSeen.length === 3) return { visible: false, reason: 'Board edge is clipped.' };
+      return { ...visible(currentImage === image ? startPlacement : e4Placement), bounds: [120, 110, 600, 600] };
+    },
+    engine: { analyze: async fen => { searches.push(fen); return { bestmove: fen.split(' ')[1] === 'w' ? 'e2e4' : 'e7e5' }; }, close() {} }
+  });
+  t.after(() => live.stop()); live.start();
+  await waitFor(() => live.status().status === 'ready'); currentImage = changedImage;
+  await waitFor(() => live.status().answer === 'Black · Pawn e7 → e5', 6500);
+  assert.deepEqual(optionsSeen, [{ cropped: false, orientation: 'auto' }, { cropped: true, orientation: 'white' }, { cropped: true, orientation: 'white' }, { cropped: false, orientation: 'auto' }]);
+  assert.equal(searches.length, 2);
+  assert.match(live.status().fen, / b KQkq - 0 1$/);
+});
+
+test('a board changed during analysis is caught up before showing the next suggestion', async t => {
+  let currentImage = image, finishSearch;
+  const updates = [];
+  const live = createLiveChess({ initial: { interval: 1000 }, capture: async () => frame(currentImage),
+    recognize: async url => visible(url === image ? startPlacement : e4Placement),
+    engine: { analyze: async fen => fen === START_FEN ? new Promise(resolve => { finishSearch = resolve; }) : { bestmove: 'e7e5' }, close() {} },
+    emit: state => updates.push(state)
+  });
+  t.after(() => live.stop()); live.start(); await waitFor(() => finishSearch);
+  currentImage = changedImage; finishSearch({ bestmove: 'e2e4' });
+  await waitFor(() => live.status().answer === 'Black · Pawn e7 → e5');
+  assert.ok(!updates.some(state => state.answer === 'White · Pawn e2 → e4'));
+  assert.ok(updates.some(state => /Catching up/.test(state.message)));
+});
+
+test('provider rate limits pause recognition even when the whole screen changes', async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'] });
+  let reads = 0, captures = 0;
+  const live = createLiveChess({ initial: { interval: 1000 }, capture: async () => frame(image + ++captures),
+    recognize: async () => { reads++; const error = new Error('Rate limit'); error.httpStatus = 429; error.retryAfterMs = 30000; throw error; },
+    engine: { close() {} }
+  });
+  t.after(() => live.stop()); live.start(); await nextTurn();
+  assert.equal(reads, 1);
+  t.mock.timers.tick(29999); await nextTurn(); assert.equal(reads, 1);
+  t.mock.timers.tick(1); await nextTurn(); assert.equal(reads, 2);
 });

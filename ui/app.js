@@ -11,6 +11,7 @@ let busy = false, captureBusy = false, connection = { hasKey: false, model: 'gem
 const attachments = new Map();
 const workspace = () => state.workspaces[state.mode];
 const current = () => workspace().items.find(q => q.id === workspace().selected) || workspace().items[0];
+const latestAnswer = () => current().followups.at(-1)?.answer || current().answer;
 const images = () => attachments.get(current().id) || [];
 
 function notify(message, error = false) {
@@ -37,14 +38,12 @@ function setBusy(value, message = 'Reading your question…') {
 }
 function updateControls() {
   const locked = busy || captureBusy || Boolean(recorder);
-  for (const id of ['scan', 'attach', 'review', 'answer', 'hint', 'addQuestion', 'sample', 'markReviewed', 'import', 'clearSession', 'useDraft', 'flag', 'settingsOpen', 'connection', 'sendFollowup', 'followup']) $(id).disabled = locked;
+  for (const id of ['scan', 'attachScreen', 'attach', 'review', 'answer', 'hint', 'addQuestion', 'sample', 'markReviewed', 'import', 'clearSession', 'useDraft', 'flag', 'settingsOpen', 'connection', 'sendFollowup', 'followup']) $(id).disabled = locked;
   for (const id of ['question', 'draft', 'kind', 'context', 'sessionName']) $(id).disabled = locked;
   $('record').disabled = busy || captureBusy;
   $('review').disabled ||= !current().draft.trim();
   $('copy').disabled = !current().answer;
   $('readAloud').disabled = !current().answer && !isSpeaking();
-  $('sendFollowup').disabled ||= !current().answer;
-  $('followup').disabled ||= !current().answer;
   $('useDraft').disabled ||= !current().answer;
   $('markReviewed').disabled ||= !current().answer && !current().draft;
   document.querySelectorAll('[data-mode],.queue-item').forEach(button => { button.disabled = locked; });
@@ -76,7 +75,10 @@ function render() {
   $('wordCount').textContent = `${q.draft.trim() ? q.draft.trim().split(/\s+/).length : 0} words`;
   $('flag').setAttribute('aria-pressed', String(q.flagged)); $('flag').textContent = q.flagged ? '⚑ Flagged' : '⚑ Flag';
   $('markReviewed').textContent = q.reviewed ? 'Reviewed ✓' : 'Mark reviewed ✓';
-  $('answerContent').innerHTML = q.answer ? markdown(q.answer) + q.followups.map(f => `<section class="followup-turn"><h3>${escape(f.question)}</h3>${markdown(f.answer)}</section>`).join('') : emptyAnswer();
+  const turns = workspace().items.filter(item => item.text || item.answer).map(item =>
+    `<section class="conversation-turn"><p class="user-message">${escape(item.text)}</p>${item.answer ? markdown(item.answer) : ''}${item.followups.map(f => `<section class="followup-turn"><h3>${escape(f.question)}</h3>${markdown(f.answer)}</section>`).join('')}</section>`).join('');
+  $('answerContent').innerHTML = turns || emptyAnswer();
+  delete $('answerContent').dataset.historyMode;
   $('answerStatus').textContent = q.stale ? 'OUTDATED' : q.sample ? 'SAMPLE' : q.answer ? 'REVIEW' : 'READY';
   $('answerMeta').textContent = q.stale ? 'Question changed. Generate a fresh answer.' : q.sample ? 'Illustrative sample · no AI call' : q.usage ? `${q.usage.toLocaleString()} tokens · Check the answer.` : 'AI answers may need checking.';
   renderQueue(); renderAttachments(); updateConnection(); updateControls();
@@ -91,7 +93,10 @@ function payload(action, extra = {}) {
   return { mode: state.mode, action, kind: current().kind, question: current().text, draft: current().draft,
     context: state.context, language: state.preferences.language, codeLanguage: state.preferences.codeLanguage,
     images: images().map(({ mimeType, data }) => ({ mimeType, data })),
-    history: state.mode === 'daily' ? workspace().items.slice(0, index).filter(q => !q.sample).map(q => ({ question: q.text, answer: q.answer })) : [], ...extra };
+    history: state.mode === 'daily' ? conversationHistory(workspace().items.slice(0, index)) : [], ...extra };
+}
+function conversationHistory(items = workspace().items) {
+  return items.filter(q => !q.sample).flatMap(q => [{ question: q.text, answer: q.answer }, ...q.followups]).filter(turn => turn.question && turn.answer).slice(-8);
 }
 async function requireKey() {
   connection = await call('settings'); updateConnection();
@@ -117,32 +122,25 @@ function addItems(items) {
   if (!q.text.trim() && !q.draft && !q.answer) { workspace().items = workspace().items.filter(item => item.id !== q.id); attachments.delete(q.id); }
   workspace().items.push(...items); workspace().selected = items[0].id;
 }
-async function processCapture(capture) {
+async function processCapture(capture, answerNow = state.preferences.autoAnswer) {
   const media = mediaFromUrl(capture.dataUrl, capture.name);
+  const message = $('followup').value.trim();
   if (current().text || current().answer || current().draft) addItems([question()]);
   attachments.set(current().id, [media]); render();
-  setBusy(true, 'Detecting questions and answer choices…');
-  let detected = [];
-  const interview = state.mode === 'daily';
-  try {
-    await requireKey();
-    if (interview) {
-      current().text = 'Help me with what is visible in this screenshot. Give a useful direct response in the format that fits the task. If my intent is unclear, briefly describe what you see and ask what I want help with.'; save(); render();
-    } else {
-    const result = await call('generate', payload('extract', { question: 'Extract every readable assessment question and its choices from this screenshot.' }));
-    if (!result.questions.length) throw new Error('No readable question was detected. Try a larger view or attach a clearer screenshot.');
-    detected = result.questions.map(q => question(q.text, q.kind));
-    addItems(detected); detected.forEach(q => attachments.set(q.id, [media]));
-    save(); render(); notify(`${detected.length} question${detected.length === 1 ? '' : 's'} detected. Check the extracted wording against the screenshot.`);
-    }
-  } finally { setBusy(false); }
-  if (interview || (detected.length && state.preferences.autoAnswer)) await ask('answer');
+  window.dispatchEvent(new Event('cue-reveal'));
+  if (!answerNow) { notify('Screen attached. Type or use the mic, then send.'); $('followup').focus(); return; }
+  current().text = message || 'Help me with this screen. Answer any visible questions directly. If my intent is unclear, briefly describe what you see and ask what I want help with.';
+  save(); render();
+  await ask('answer');
+  $('followup').value = '';
+  $('answerContent').scrollTop = $('answerContent').scrollHeight;
 }
-async function scanNow() {
+async function scanNow(answerNow = state.preferences.autoAnswer) {
+  if (document.querySelector('dialog[open]')) return;
   if (blocked()) return;
   if (state.mode === 'chess') { window.dispatchEvent(new Event('cue-chess-toggle')); return; }
   captureBusy = true; updateControls();
-  try { const result = await scan(); captureBusy = false; await processCapture(result); }
+  try { const result = await scan(); captureBusy = false; await processCapture(result, answerNow); }
   finally { captureBusy = false; updateControls(); }
 }
 
@@ -180,7 +178,10 @@ $('settingsDialog').addEventListener('close', () => { $('apiKey').value = ''; $(
 document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => $(button.dataset.close).close());
 $('settingsOpen').onclick = guarded(openSettings); $('connection').onclick = guarded(openSettings);
 
-document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => { if (blocked()) return; state.mode = button.dataset.mode; save(); render(); });
+document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => {
+  if (blocked()) return; state.mode = button.dataset.mode; save(); render();
+  if (state.mode === 'daily') { window.dispatchEvent(new Event('cue-reveal')); $('followup').focus(); }
+});
 $('sessionName').oninput = () => { workspace().title = $('sessionName').value; $('sessionLabel').textContent = workspace().title || 'Untitled session'; save(); };
 $('context').oninput = () => { state.context = $('context').value; save(); };
 function invalidate(questionChanged = false) {
@@ -194,24 +195,32 @@ $('flag').onclick = () => { current().flagged = !current().flagged; save(); rend
 $('addQuestion').onclick = guarded(() => { addItems([question()]); save(); render(); $('question').focus(); });
 $('sample').onclick = guarded(() => { addItems(samples(state.mode)); workspace().title ||= 'Daily · sample'; save(); render(); notify('Sample content loaded. The displayed sample answer did not use AI.'); });
 $('answer').onclick = guarded(() => ask('answer')); $('review').onclick = guarded(() => ask('review')); $('hint').onclick = guarded(() => ask('hint'));
-$('scan').onclick = guarded(scanNow);
+$('scan').onclick = guarded(() => scanNow());
+$('attachScreen').onclick = guarded(() => scanNow(false));
 $('cancel').onclick = guarded(async () => { await call('cancel'); });
 $('useDraft').onclick = () => { current().draft = current().answer; current().reviewed = false; save(); render(); $('draft').focus(); };
 $('markReviewed').onclick = () => { current().reviewed = !current().reviewed; save(); render(); };
-$('copy').onclick = guarded(async () => { await navigator.clipboard.writeText(current().answer); notify('Answer copied.'); });
+$('copy').onclick = guarded(async () => { await navigator.clipboard.writeText(latestAnswer()); notify('Answer copied.'); });
 $('readAloud').onclick = guarded(async () => {
   if (isSpeaking()) { await stopSpeaking(); $('readAloud').textContent = 'Read aloud'; $('readAloud').setAttribute('aria-pressed', 'false'); return; }
-  const spoken = $('answerContent').innerText;
+  const reply = document.createElement('div'); reply.innerHTML = markdown(latestAnswer());
+  reply.querySelectorAll('p,h1,h2,h3,li,pre').forEach(node => node.append('\n'));
+  const spoken = reply.textContent;
   await readAloud(spoken, state.preferences.language, active => { $('readAloud').textContent = active ? 'Stop reading' : 'Read aloud'; $('readAloud').setAttribute('aria-pressed', String(active)); });
 });
 $('followupForm').onsubmit = guarded(async event => {
   event.preventDefault(); if (blocked()) return;
-  const followup = $('followup').value.trim(); if (!followup || !current().answer) return;
+  const followup = $('followup').value.trim(); if (!followup && !images().length) return;
+  if (!current().answer) {
+    current().text = followup || 'Help me with this screen. Answer any visible questions directly.';
+    save(); render(); await ask('answer'); $('followup').value = '';
+    $('answerContent').scrollTop = $('answerContent').scrollHeight; return;
+  }
+  if (!followup) return;
   const target = current(); setBusy(true, 'Thinking it through…');
   try {
     await requireKey();
-    const result = await call('generate', payload('followup', { question: `Original question: ${target.text}\n\nFollow-up: ${followup}`, draft: '',
-      history: [{ question: target.text, answer: target.answer }, ...target.followups] }));
+    const result = await call('generate', payload('followup', { question: followup, draft: '', history: conversationHistory() }));
     target.followups.push({ question: followup, answer: result.answer }); target.followups = target.followups.slice(-20); target.usage += result.usage || 0;
     $('followup').value = ''; save(); render(); $('answerContent').scrollTop = $('answerContent').scrollHeight;
   } finally { setBusy(false); }
@@ -238,7 +247,7 @@ document.addEventListener('paste', guarded(async event => {
 }));
 window.desktop?.onScan(guarded(async data => { if (data.shortcut) return scanNow(); if (state.mode === 'chess' || blocked()) return; if (data.error) throw new Error(data.error); await processCapture(data.capture); }));
 document.addEventListener('keydown', event => {
-  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !$('settingsDialog').open) { event.preventDefault(); if (!blocked()) guarded(() => ask('answer'))(); }
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !document.querySelector('dialog[open]')) { event.preventDefault(); if (!blocked()) { if (state.mode === 'daily' && (document.activeElement === $('followup') || $('followup').value.trim())) $('followupForm').requestSubmit(); else guarded(() => ask('answer'))(); } }
   if (!window.desktop && (event.metaKey || event.ctrlKey) && event.shiftKey && event.code === 'Space') { event.preventDefault(); guarded(scanNow)(); }
 });
 
@@ -297,8 +306,10 @@ async function record() {
     try {
       const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
       const result = await call('generate', payload('transcribe', { images: [], question: 'Transcribe this recording.', audio: { mimeType: recording.mimeType.split(';')[0], data: dataUrl.split(',')[1] } }));
-      current().text = [current().text, result.answer].filter(Boolean).join('\n\n'); current().reviewed = false; save(); render(); notify('Transcript added. Check it, then get an answer.');
+      $('followup').value = [$('followup').value.trim(), result.answer].filter(Boolean).join(' ');
+      notify('Transcript ready. Edit it if needed, then send.');
     } finally { setBusy(false); }
+    $('followup').focus();
   });
   recordStarted = Date.now(); recorder.start();
   $('record').textContent = '■ Stop recording'; $('record').setAttribute('aria-pressed', 'true'); updateControls();

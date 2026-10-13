@@ -20,6 +20,15 @@ test('board parser preserves placement and orientation with a bounded board crop
   });
 });
 
+test('the board reader maps every square explicitly before code constructs FEN', () => {
+  const ranks = ['rnbqkbnr', 'pppppppp', '........', '........', '....P...', '........', 'PPPP.PPP', 'RNBQKBNR'];
+  const input = { ...observation, placement: undefined, ranks };
+  assert.equal(parseBoard(JSON.stringify(input)).placement, 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR');
+  for (const invalid of [ranks.slice(0, 7), [...ranks.slice(0, 7), 'RNBQKBN'], [...ranks.slice(0, 7), 'RNBQKBX.']]) {
+    assert.throws(() => parseBoard(JSON.stringify({ ...input, ranks: invalid })), /incomplete ranks/);
+  }
+});
+
 test('board parser rejects malformed JSON, broken ranks, invalid symbols, and out-of-image bounds', () => {
   assert.throws(() => parseBoard('not json'), /invalid data/);
   for (const data of ['null', '[]', 'true', '"not a board"']) {
@@ -61,6 +70,14 @@ test('recognition sends only screenshot data, carries orientation, and keeps the
   assert.match(sent.body.systemInstruction.parts[0].text, /Omit bounds/);
   assert.equal(sent.body.generationConfig.responseMimeType, 'application/json');
   assert.equal(sent.body.generationConfig.temperature, 0);
+  assert.deepEqual(sent.body.generationConfig.responseJsonSchema.required, ['visible', 'certain']);
+  assert.equal(sent.body.generationConfig.responseJsonSchema.properties.ranks.minItems, 8);
+});
+
+test('provider failures carry status and Retry-After for the live watcher backoff', async () => {
+  await assert.rejects(recognizeBoard(image, settings, { fetchImpl: async () => new Response('{}', { status: 429, headers: { 'Retry-After': '30' } }) }), error => {
+    assert.equal(error.httpStatus, 429); assert.equal(error.retryAfterMs, 30000); return true;
+  });
 });
 
 test('recognition returns uncertainty and rejects incomplete provider output or HTTP failures', async () => {

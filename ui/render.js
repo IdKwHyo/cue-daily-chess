@@ -19,5 +19,5 @@ export function markdown(text) {
   return output;
 }
 export function emptyAnswer() {
-  return '<div class="empty-answer"><div class="empty-symbol" aria-hidden="true">✳</div><h3>A clearer way forward.</h3><p>Your answer, explanation, and things to double-check will appear here.</p><div class="empty-steps"><span>01 &nbsp; Bring in a question</span><span>02 &nbsp; Get a useful perspective</span><span>03 &nbsp; Review and make it yours</span></div></div>';
+  return '<div class="empty-answer"><h3>What’s on your mind?</h3><p>Type a message, use the mic, or capture your screen.</p></div>';
 }
